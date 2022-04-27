@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.1.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"example.com","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":false},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="yarnYarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序 基本架构 ResourceManager NodeManager ApplicationMaster Container 工作机制  MR程序提交到客户端所在的节点。 YarnRunner向ResourceManager申请一个A">
+<meta property="og:type" content="article">
+<meta property="og:title" content="hadoop yarn">
+<meta property="og:url" content="http://example.com/2022/04/27/hadoop-yarn/index.html">
+<meta property="og:site_name" content="大数据学习笔记">
+<meta property="og:description" content="yarnYarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序 基本架构 ResourceManager NodeManager ApplicationMaster Container 工作机制  MR程序提交到客户端所在的节点。 YarnRunner向ResourceManager申请一个A">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/2022/04/27/hadoop-yarn/yarn%207b6878eb29574145b350acaeb8c2ef1c/Untitled.png">
+<meta property="og:image" content="http://example.com/2022/04/27/hadoop-yarn/yarn%207b6878eb29574145b350acaeb8c2ef1c/Untitled%201.png">
+<meta property="og:image" content="http://example.com/2022/04/27/hadoop-yarn/yarn%207b6878eb29574145b350acaeb8c2ef1c/Untitled%202.png">
+<meta property="og:image" content="http://example.com/2022/04/27/hadoop-yarn/yarn%207b6878eb29574145b350acaeb8c2ef1c/Untitled%203.png">
+<meta property="article:published_time" content="2022-04-27T06:07:22.000Z">
+<meta property="article:modified_time" content="2022-04-27T06:17:32.911Z">
+<meta property="article:author" content="songjj">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/2022/04/27/hadoop-yarn/yarn%207b6878eb29574145b350acaeb8c2ef1c/Untitled.png">
+
+<link rel="canonical" href="http://example.com/2022/04/27/hadoop-yarn/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>hadoop yarn | 大数据学习笔记</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">大数据学习笔记</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2022/04/27/hadoop-yarn/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="songjj">
+      <meta itemprop="description" content="编程学习之旅">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="大数据学习笔记">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          hadoop yarn
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2022-04-27 14:07:22 / 修改时间：14:17:32" itemprop="dateCreated datePublished" datetime="2022-04-27T14:07:22+08:00">2022-04-27</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/big-data/" itemprop="url" rel="index"><span itemprop="name">big data</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/big-data/hadoop/" itemprop="url" rel="index"><span itemprop="name">hadoop</span></a>
+                </span>
+                  ，
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/big-data/hadoop/yarn/" itemprop="url" rel="index"><span itemprop="name">yarn</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h1 id="yarn"><a href="#yarn" class="headerlink" title="yarn"></a>yarn</h1><p>Yarn是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序</p>
+<h1 id="基本架构"><a href="#基本架构" class="headerlink" title="基本架构"></a>基本架构</h1><p><img src="/2022/04/27/hadoop-yarn/yarn%207b6878eb29574145b350acaeb8c2ef1c/Untitled.png" alt="Untitled"></p>
+<p>ResourceManager</p>
+<p>NodeManager</p>
+<p>ApplicationMaster</p>
+<p>Container</p>
+<h1 id="工作机制"><a href="#工作机制" class="headerlink" title="工作机制"></a>工作机制</h1><p><img src="/2022/04/27/hadoop-yarn/yarn%207b6878eb29574145b350acaeb8c2ef1c/Untitled%201.png" alt="Untitled"></p>
+<ol>
+<li>MR程序提交到客户端所在的节点。</li>
+<li>YarnRunner向ResourceManager申请一个Application。</li>
+<li>RM将该应用程序的资源路径返回给YarnRunner。</li>
+<li>该程序将运行所需资源提交到HDFS上。</li>
+<li>程序资源提交完毕后，申请运行mrAppMaster。</li>
+<li>RM将用户的请求初始化成一个Task。</li>
+<li>其中一个NodeManager领取到Task任务。</li>
+<li>该NodeManager创建容器Container，并产生MRAppmaster。</li>
+<li>Container从HDFS上拷贝资源到本地。</li>
+<li>MRAppmaster向RM 申请运行MapTask资源。</li>
+<li>RM将运行MapTask任务分配给另外两个NodeManager，另两个NodeManager分别领取任务并创建容器。</li>
+<li>MR向两个接收到任务的NodeManager发送程序启动脚本，这两个NodeManager分别启动MapTask，MapTask对数据分区排序。</li>
+<li>MrAppMaster等待所有MapTask运行完毕后，向RM申请容器，运行ReduceTask。</li>
+<li>ReduceTask向MapTask获取相应分区的数据。</li>
+<li>程序运行完毕后，MR会向RM申请注销自己。</li>
+</ol>
+<h1 id="YARN任务提交过程"><a href="#YARN任务提交过程" class="headerlink" title="YARN任务提交过程"></a>YARN任务提交过程</h1><p>（1）作业提交<br>第1步：Client调用job.waitForCompletion方法，向整个集群提交MapReduce作业。<br>第2步：Client向RM申请一个作业id。<br>第3步：RM给Client返回该job资源的提交路径和作业id。<br>第4步：Client提交jar包、切片信息和配置文件到指定的资源提交路径。<br>第5步：Client提交完资源后，向RM申请运行MrAppMaster。<br>（2）作业初始化<br>第6步：当RM收到Client的请求后，将该job添加到容量调度器中。<br>第7步：某一个空闲的NM领取到该Job。<br>第8步：该NM创建Container，并产生MRAppmaster。<br>第9步：下载Client提交的资源到本地。<br>（3）任务分配<br>第10步：MrAppMaster向RM申请运行多个MapTask任务资源。<br>第11步：RM将运行MapTask任务分配给另外两个NodeManager，另两个NodeManager分别领取任务并创建容器。<br>（4）任务运行<br>第12步：MR向两个接收到任务的NodeManager发送程序启动脚本，这两个NodeManager分别启动MapTask，MapTask对数据分区排序。<br>第13步：MrAppMaster等待所有MapTask运行完毕后，向RM申请容器，运行ReduceTask。<br>第14步：ReduceTask向MapTask获取相应分区的数据。<br>第15步：程序运行完毕后，MR会向RM申请注销自己。<br>（5）进度和状态更新<br>YARN中的任务将其进度和状态(包括counter)返回给应用管理器, 客户端每秒(通过mapreduce.client.progressmonitor.pollinterval设置)向应用管理器请求进度更新, 展示给用户。<br>（6）作业完成<br>除了向应用管理器请求作业进度外, 客户端每5秒都会通过调用waitForCompletion()来检查作业是否完成。时间间隔可以通过mapreduce.client.completion.pollinterval来设置。作业完成之后, 应用管理器和Container会清理工作状态。作业的信息会被作业历史服务器存储以备之后用户核查。</p>
+<h1 id="资源调度器"><a href="#资源调度器" class="headerlink" title="资源调度器"></a>资源调度器</h1><p>分为:FIFO、Capacity Scheduler和Fair Scheduler.Hadoop2.7.2默认Capacity Scheduler</p>
+<p>设置：</p>
+<p>yarn-default.xml</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">description</span>&gt;</span>The class to use as the resource scheduler.<span class="tag">&lt;/<span class="name">description</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">name</span>&gt;</span>yarn.resourcemanager.scheduler.class<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">value</span>&gt;</span>org.apache.hadoop.yarn.server.resourcemanager.scheduler.capacity.CapacityScheduler<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="FIFO"><a href="#FIFO" class="headerlink" title="FIFO"></a>FIFO</h2><p>按到达时间排序，先到先服务</p>
+<h2 id="容量调度器"><a href="#容量调度器" class="headerlink" title="容量调度器"></a>容量调度器</h2><p><img src="/2022/04/27/hadoop-yarn/yarn%207b6878eb29574145b350acaeb8c2ef1c/Untitled%202.png" alt="Untitled"></p>
+<p>支持多队列，每个队列可配置一定的资源量，每个队列采用FIFO调度策略</p>
+<p>为防止同一个用户的作业独占队列中的资源，会对同一用户提交的作业所占资源量进行限定</p>
+<p>首先，计算每个队列中正在运行的任务数与其应该分得的计算资源之间的比值，选择一个该比值最小的队列-最闲的</p>
+<p>其实，按照作业优先级和提交时间顺序，同时考虑用户资源量限制和内存限制对队列内任务排序</p>
+<p>三个队列同时按照任务的先后顺序依次执行，比如，job11,job21和job31分别排在队列最前面，先运行，也是并行运行</p>
+<h2 id="公平调度器"><a href="#公平调度器" class="headerlink" title="公平调度器"></a>公平调度器</h2><p><img src="/2022/04/27/hadoop-yarn/yarn%207b6878eb29574145b350acaeb8c2ef1c/Untitled%203.png" alt="Untitled"></p>
+<p>支持多队列，每个队列的资源量可以配置，同一队列中的作业公平共享队列中所有资源。</p>
+<p>每个队列的job按照优先级分配资源，优先级越高分配的资源越多，但每个job都会分配到资源以确保公平。</p>
+<p>资源有限的情况下，每个job理想情况下获得的计算资源与实际获得的计算资源存在一种差距，这个差距就叫做缺额。</p>
+<p>同一个队列中，job的资源缺额越大，越先获得资源优先执行。</p>
+<h1 id="任务执行推测"><a href="#任务执行推测" class="headerlink" title="任务执行推测"></a>任务执行推测</h1><p>作业完成时间取决于最慢的任务完成时间</p>
+<h2 id="推测执行机制"><a href="#推测执行机制" class="headerlink" title="推测执行机制"></a>推测执行机制</h2><p>为拖后腿的任务启动一个备份任务</p>
+<h2 id="执行推测任务前提"><a href="#执行推测任务前提" class="headerlink" title="执行推测任务前提"></a>执行推测任务前提</h2><ol>
+<li>每个Task只能有一个备份任务</li>
+<li>当前Job已完成的Task必须不小于0.05(5%)</li>
+<li>开启推测执行参数设置。mapred-site.xml</li>
+</ol>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  	<span class="tag">&lt;<span class="name">name</span>&gt;</span>mapreduce.map.speculative<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  	<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">  	<span class="tag">&lt;<span class="name">description</span>&gt;</span>If true, then multiple instances of some map tasks may be executed in parallel.<span class="tag">&lt;/<span class="name">description</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;<span class="name">property</span>&gt;</span></span><br><span class="line">  	<span class="tag">&lt;<span class="name">name</span>&gt;</span>mapreduce.reduce.speculative<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">  	<span class="tag">&lt;<span class="name">value</span>&gt;</span>true<span class="tag">&lt;/<span class="name">value</span>&gt;</span></span><br><span class="line">  	<span class="tag">&lt;<span class="name">description</span>&gt;</span>If true, then multiple instances of some reduce tasks may be executed in parallel.<span class="tag">&lt;/<span class="name">description</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">property</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>不能启用推测任务情况<ol>
+<li>任务间存在严重的负载倾斜</li>
+<li>特殊任务，比如任务向数据库中写数据</li>
+</ol>
+</li>
+<li>推测执行算法原理<ol>
+<li>若某时刻，任务T的执行进度为progress,可通过一定算法推测出该任务的最终完成时刻estimateEndTime.若此刻为该任务启动一个备份任务，可推断出它可能的完成时刻estimateEndTime.<ol>
+<li>estimatedRunTime&#x3D;(currentTimestamp-taskStartTime)&#x2F;progress<br> 推测运行时间(60s)&#x3D;(当前时刻(6)-任务启动时刻(0))&#x2F;任务运行比例(10%)</li>
+<li>estimateEndTime&#x3D;estimatedRunTime+taskStartTime<br> 推测执行完时刻 60&#x3D;推测运行时间(60s)+任务启动时刻(0) </li>
+<li>estimateEndTime&#96;&#x3D;currentTimestamp+averageRunTime<br> 备份任务推测完成时刻(16)&#x3D;当前时刻(6)+运行完成任务的平均时间(10s)</li>
+</ol>
+</li>
+<li>MR总是选择(estimateEndTime-estimateEndTime&#96;)差值最大的任务，并为之启动备份任务</li>
+<li>为了防止大量任务同时启动备份任务造成的资源浪费，MR为每个作业设置了同时启动的备份任务数目上限</li>
+<li>推测执行机制实际上采用了经典的优化算法：以空间换时间。</li>
+</ol>
+</li>
+</ol>
+<h1 id="MapReduce优化"><a href="#MapReduce优化" class="headerlink" title="MapReduce优化"></a>MapReduce优化</h1><h2 id="数据输入"><a href="#数据输入" class="headerlink" title="数据输入"></a>数据输入</h2><p>合并小文件：在执行MR任务前将小文件进行合并，大量的小文件会产生大量的Map任务，增大Map任务装载次数，而任务的装载比较耗时，从而导致MR运行较慢</p>
+<p>采用CombineTextInputFormat来作为输入，解决输入端大量小文件场景。</p>
+<h2 id="Map阶段"><a href="#Map阶段" class="headerlink" title="Map阶段"></a>Map阶段</h2><p>减少溢写(Splill)次数：通过调整io.sort.mb及sort.spill.percent参数值，增大触发Spill的内存上限，减少Spill次数，从而减少磁盘IO</p>
+<p>减少合并(Merge)次数：通过调整io.sort.factor参数，增大Merge的文件数目，减少Merge的次数，从而缩短MR处理时间</p>
+<p>在Map之后，不影响业务逻辑前提下，先进行Combine处理，减少I&#x2F;O </p>
+<h2 id="Reduce阶段"><a href="#Reduce阶段" class="headerlink" title="Reduce阶段"></a>Reduce阶段</h2><p>合理设置Map和Reduce数：两个都不能设置太少，也不能设置太多。太少，会导致Task等待，延长处理时间；太多，会导致Map、Reduce任务间竞争资源，造成处理超时等错误</p>
+<p>设置Map、Reduce共存：调整slowstart.completedmaps参数，使Map运行到一定程度后，Reduce也开始运行，减少Reduce的等待时间</p>
+<p>规避使用Reduce：因为Reduce在用于连接数据集的时候将会产生大量的网络消耗</p>
+<p>合理设置Reduce端的Buffer：默认情况下，数据达到一个阈值的之后。Buffer中的数据就会写入磁盘，然后Reduce会从磁盘中获得所有的数据。也就是说，Buffer和Reduce是没有直接关联的，中间多次写磁盘→读磁盘的过程。既然有这个弊端，那么就可以通过参数来配置，使Buffer中的一部分数据可以直接输送到Reduce，从而减少IO开销：mapreduce.reduce.input.buffer.percent,默认为0.0。当值大于0的时候，会保留指定比例的内存读Buffer中的数据直接拿给Reduce使用。这样一来，设置Buffer需要内存，读取数据需要内存，Reduce计算也要内存，所以要根据作业的运行情况进行调整。</p>
+<h2 id="IO传输"><a href="#IO传输" class="headerlink" title="IO传输"></a>IO传输</h2><p>采用数据压缩的方式，减少网络IO的时间。安装Snappy和LZO压缩编码器</p>
+<p>使用SequenceFile二进制文件</p>
+<h2 id="数据倾斜问题"><a href="#数据倾斜问题" class="headerlink" title="数据倾斜问题"></a>数据倾斜问题</h2><p>现象：</p>
+<p>数据频率倾斜—某一个区域的数据量要远远大于其他区域</p>
+<p>数据大小倾斜—部分记录的大小远远大于平均值</p>
+<p>减少数据倾斜的方法：</p>
+<ol>
+<li>抽样和范围分区<br>可通过对原始数据进行抽样得到的结果集来预设分区边界值</li>
+<li>自定义分区<br>基于输出键的背景知识进行自定义分区。</li>
+<li>Combine</li>
+<li>采用MapJoin，尽量避免ReduceJoin</li>
+</ol>
+<h2 id="常用参数调优"><a href="#常用参数调优" class="headerlink" title="常用参数调优"></a>常用参数调优</h2><p>可在MR程序中配置</p>
+<p>mapred-default.xml</p>
+<table>
+<thead>
+<tr>
+<th>配置参数</th>
+<th>参数说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>mapreduce.map.memory.mb</td>
+<td>一个MapTask可使用的资源上限（单位:MB），默认为1024。如果MapTask实际使用的资源量超过该值，则会被强制杀死。</td>
+</tr>
+<tr>
+<td>mapreduce.reduce.memory.mb</td>
+<td>一个ReduceTask可使用的资源上限（单位:MB），默认为1024。如果ReduceTask实际使用的资源量超过该值，则会被强制杀死。</td>
+</tr>
+<tr>
+<td>mapreduce.map.cpu.vcores</td>
+<td>每个MapTask可使用的最多cpu core数目，默认值: 1</td>
+</tr>
+<tr>
+<td>mapreduce.reduce.cpu.vcores</td>
+<td>每个ReduceTask可使用的最多cpu core数目，默认值: 1</td>
+</tr>
+<tr>
+<td>mapreduce.reduce.shuffle.parallelcopies</td>
+<td>每个Reduce去Map中取数据的并行数。默认值是5</td>
+</tr>
+<tr>
+<td>mapreduce.reduce.shuffle.merge.percent</td>
+<td>Buffer中的数据达到多少比例开始写入磁盘。默认值0.66</td>
+</tr>
+<tr>
+<td>mapreduce.reduce.shuffle.input.buffer.percent</td>
+<td>Buffer大小占Reduce可用内存的比例。默认值0.7</td>
+</tr>
+<tr>
+<td>mapreduce.reduce.input.buffer.percent</td>
+<td>指定多少比例的内存用来存放Buffer中的数据，默认值是0.0</td>
+</tr>
+</tbody></table>
+<p>需在YARN启动之前配置</p>
+<p>yarn-default.xml</p>
+<table>
+<thead>
+<tr>
+<th>配置参数</th>
+<th>参数说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>yarn.scheduler.minimum-allocation-mb</td>
+<td>给应用程序Container分配的最小内存，默认值：1024</td>
+</tr>
+<tr>
+<td>yarn.scheduler.maximum-allocation-mb</td>
+<td>给应用程序Container分配的最大内存，默认值：8192</td>
+</tr>
+<tr>
+<td>yarn.scheduler.minimum-allocation-vcores</td>
+<td>每个Container申请的最小CPU核数，默认值：1</td>
+</tr>
+<tr>
+<td>yarn.scheduler.maximum-allocation-vcores</td>
+<td>每个Container申请的最大CPU核数，默认值：32</td>
+</tr>
+<tr>
+<td>yarn.nodemanager.resource.memory-mb</td>
+<td>给Containers分配的最大物理内存，默认值：8192</td>
+</tr>
+</tbody></table>
+<p>SHUFFLE性能优化的参数，需YARN启动之前配置</p>
+<p>mapred-default.xml</p>
+<table>
+<thead>
+<tr>
+<th>配置参数</th>
+<th>参数说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>mapreduce.task.io.sort.mb</td>
+<td>Shuffle的环形缓冲区大小，默认100m</td>
+</tr>
+<tr>
+<td>mapreduce.map.sort.spill.percent</td>
+<td>环形缓冲区溢出的阈值，默认80%</td>
+</tr>
+</tbody></table>
+<p>容错相关参数：</p>
+<table>
+<thead>
+<tr>
+<th>配置参数</th>
+<th>参数说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>mapreduce.map.maxattempts</td>
+<td>每个Map Task最大重试次数，一旦重试参数超过该值，则认为Map Task运行失败，默认值：4。</td>
+</tr>
+<tr>
+<td>mapreduce.reduce.maxattempts</td>
+<td>每个Reduce Task最大重试次数，一旦重试参数超过该值，则认为Map Task运行失败，默认值：4。</td>
+</tr>
+<tr>
+<td>mapreduce.task.timeout</td>
+<td>Task超时时间，经常需要设置的一个参数，该参数表达的意思为：如果一个Task在一定时间内没有任何进入，即不会读取新的数据，也没有输出数据，则认为该Task处于Block状态，可能是卡住了，也许永远会卡住，为了防止因为用户程序永远Block住不退出，则强制设置了一个该超时时间（单位毫秒），默认是600000。如果你的程序对每条输入数据的处理时间过长（比如会访问数据库，通过网络拉取数据等），建议将该参数调大，该参数过小常出现的错误提示是“AttemptID:attempt_14267829456721_123456_m_000224_0 Timed out after 300 secsContainer killed by the ApplicationMaster.”。</td>
+</tr>
+</tbody></table>
+<h1 id="小文件"><a href="#小文件" class="headerlink" title="小文件"></a>小文件</h1><p>占用NameNode内存，索引文件过大，索引变慢</p>
+<p>解决：</p>
+<p>Hadoop archive</p>
+<p>sequence file</p>
+<p>combinefileinputformat</p>
+<p>jvm重用</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2022/04/27/hadoop-mapreduce/" rel="prev" title="hadoop mapreduce">
+      <i class="fa fa-chevron-left"></i> hadoop mapreduce
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2022/04/27/zookeeper/" rel="next" title="zookeeper">
+      zookeeper <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#yarn"><span class="nav-number">1.</span> <span class="nav-text">yarn</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E6%9E%B6%E6%9E%84"><span class="nav-number">2.</span> <span class="nav-text">基本架构</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%B7%A5%E4%BD%9C%E6%9C%BA%E5%88%B6"><span class="nav-number">3.</span> <span class="nav-text">工作机制</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#YARN%E4%BB%BB%E5%8A%A1%E6%8F%90%E4%BA%A4%E8%BF%87%E7%A8%8B"><span class="nav-number">4.</span> <span class="nav-text">YARN任务提交过程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E8%B5%84%E6%BA%90%E8%B0%83%E5%BA%A6%E5%99%A8"><span class="nav-number">5.</span> <span class="nav-text">资源调度器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#FIFO"><span class="nav-number">5.1.</span> <span class="nav-text">FIFO</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%AE%B9%E9%87%8F%E8%B0%83%E5%BA%A6%E5%99%A8"><span class="nav-number">5.2.</span> <span class="nav-text">容量调度器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%AC%E5%B9%B3%E8%B0%83%E5%BA%A6%E5%99%A8"><span class="nav-number">5.3.</span> <span class="nav-text">公平调度器</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BB%BB%E5%8A%A1%E6%89%A7%E8%A1%8C%E6%8E%A8%E6%B5%8B"><span class="nav-number">6.</span> <span class="nav-text">任务执行推测</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8E%A8%E6%B5%8B%E6%89%A7%E8%A1%8C%E6%9C%BA%E5%88%B6"><span class="nav-number">6.1.</span> <span class="nav-text">推测执行机制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%89%A7%E8%A1%8C%E6%8E%A8%E6%B5%8B%E4%BB%BB%E5%8A%A1%E5%89%8D%E6%8F%90"><span class="nav-number">6.2.</span> <span class="nav-text">执行推测任务前提</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#MapReduce%E4%BC%98%E5%8C%96"><span class="nav-number">7.</span> <span class="nav-text">MapReduce优化</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E8%BE%93%E5%85%A5"><span class="nav-number">7.1.</span> <span class="nav-text">数据输入</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Map%E9%98%B6%E6%AE%B5"><span class="nav-number">7.2.</span> <span class="nav-text">Map阶段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Reduce%E9%98%B6%E6%AE%B5"><span class="nav-number">7.3.</span> <span class="nav-text">Reduce阶段</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IO%E4%BC%A0%E8%BE%93"><span class="nav-number">7.4.</span> <span class="nav-text">IO传输</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%95%B0%E6%8D%AE%E5%80%BE%E6%96%9C%E9%97%AE%E9%A2%98"><span class="nav-number">7.5.</span> <span class="nav-text">数据倾斜问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B8%B8%E7%94%A8%E5%8F%82%E6%95%B0%E8%B0%83%E4%BC%98"><span class="nav-number">7.6.</span> <span class="nav-text">常用参数调优</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%B0%8F%E6%96%87%E4%BB%B6"><span class="nav-number">8.</span> <span class="nav-text">小文件</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">songjj</p>
+  <div class="site-description" itemprop="description">编程学习之旅</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">6</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+        <span class="site-state-item-count">7</span>
+        <span class="site-state-item-name">分类</span>
+      </div>
+      <div class="site-state-item site-state-tags">
+        <span class="site-state-item-count">1</span>
+        <span class="site-state-item-name">标签</span>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">songjj</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
